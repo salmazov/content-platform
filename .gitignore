@@ -4,3 +4,6 @@
 # React Router
 /.react-router/
 /build/
+
+# Ignore environment variables
+.env

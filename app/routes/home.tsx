@@ -1,5 +1,5 @@
 import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import PhotoGrid from "../components/PhotoGrid";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +9,8 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Welcome />;
+  return <div>
+      <h1>Random Photos from Pexels</h1>
+      <PhotoGrid />
+  </div>;
 }
