@@ -1,5 +1,10 @@
 import type { Route } from "./+types/home";
+
 import PhotoGrid from "../components/PhotoGrid";
+
+import { ErrorBoundary } from "../components/ErrorBoundary";
+
+export { ErrorBoundary };
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,8 +14,6 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <div>
-      <h1>Random Photos from Pexels</h1>
-      <PhotoGrid />
-  </div>;
+  return  <PhotoGrid />
+  ;
 }
