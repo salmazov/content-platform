@@ -27,7 +27,7 @@ export default function PhotoDetails() {
 
   if (loading) return <p>Loading...</p>;
   if (!photo) return <p>Photo not found.</p>;
-  console.log(photo);
+  
   return (
     <div style={{ textAlign: "center", padding: "20px", color: "#fff" }}>
       <button 

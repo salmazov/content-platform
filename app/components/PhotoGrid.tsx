@@ -1,56 +1,63 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { fetchRandomPhotos } from "../api/pexels";
+import { Link } from "react-router-dom";
+
+interface Photo {
+  id: string;
+  src: { medium: string };
+  photographer: string;
+}
 
 export default function PhotoGrid() {
-  const [photos, setPhotos] = useState<any[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const observer = useRef<IntersectionObserver | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
   const lastPhotoRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function loadPhotos() {
       setLoading(true);
-      const images = await fetchRandomPhotos(20, page);
-      setPhotos((prev) => [...prev, ...images]);
+      const newPhotos = await fetchRandomPhotos(20, page); // Load 20 photos per request
+      setPhotos((prevPhotos) => [...prevPhotos, ...newPhotos]);
       setLoading(false);
     }
     loadPhotos();
   }, [page]);
 
-  const lastPhotoCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (loading) return;
-      if (observer.current) observer.current.disconnect();
+  // Memoize the photos array to avoid re-computation on re-renders
+  const memoizedPhotos = useMemo(() => photos, [photos]);
 
-      observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          setPage((prev) => prev + 1);
-        }
-      });
+  // Intersection Observer for Infinite Scrolling
+  useEffect(() => {
+    if (observerRef.current) observerRef.current.disconnect();
 
-      if (node) observer.current.observe(node);
-    },
-    [loading]
-  );
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setPage((prevPage) => prevPage + 1); // Load next batch of images
+      }
+    });
+
+    if (lastPhotoRef.current) {
+      observerRef.current.observe(lastPhotoRef.current);
+    }
+  }, [memoizedPhotos]);
 
   if (loading && photos.length === 0) return <p>Loading images...</p>;
 
   return (
-    <div style={{ columnCount: 3, columnGap: "10px" }}>
-      {photos.map((photo, index) => (
-        <div key={`${photo.id}-${index}`}  ref={index === photos.length - 1 ? lastPhotoCallback : null}>
-          <Link to={`/photo/${photo.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-            <img
-              src={photo.src.medium}
-              alt={photo.photographer}
-              style={{ width: "100%", marginBottom: "10px", borderRadius: "8px", cursor: "pointer" }}
-            />
-          </Link>
-        </div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+      {memoizedPhotos.map((photo, index) => (
+        <Link key={`${photo.id}-${index}`} to={`/photo/${photo.id}`}>
+          <img
+            src={photo.src.medium}
+            alt={photo.photographer}
+            style={{ width: "100%", borderRadius: "8px" }}
+          />
+        </Link>
       ))}
-      {loading && <p>Loading more...</p>}
+      {/* Observer Target */}
+      <div ref={lastPhotoRef} style={{ height: "1px" }} />
     </div>
   );
 }
