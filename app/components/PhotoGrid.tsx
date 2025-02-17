@@ -1,7 +1,35 @@
-import {styled} from "styled-components";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { fetchRandomPhotos } from "../api/pexels";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { fetchPhotos } from "../api/pexels";
 import { Link } from "react-router-dom";
+import {styled} from "styled-components";
+
+// Styled Components
+const GridContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 20px;
+`;
+
+const StyledImage = styled.img`
+  width: 100%;
+  border-radius: 8px;
+  transition: transform 0.2s ease-in-out;
+  &:hover {
+    transform: scale(1.03);
+  }
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  max-width: 400px;
+  padding: 10px;
+  margin: 20px auto;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+`;
 
 interface Photo {
   id: string;
@@ -9,52 +37,23 @@ interface Photo {
   photographer: string;
 }
 
-const GridContainer = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px; // Reduce gap slightly to balance padding
-  padding: 16px;
-
-  @media (max-width: 768px) {
-    gap: 12px;
-    padding: 20px;
-  }
-
-  @media (max-width: 480px) {
-    gap: 16px;
-    padding: 24px;
-  }
-`;
-
-
-const StyledImage = styled.img`
-  width: 100%;
-  padding: 8px;
-  transition: transform 0.2s ease-in-out;
-
-  &:hover {
-    transform: scale(1.03);
-  }
-`;
-
-
-
 export default function PhotoGrid() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [query, setQuery] = useState(""); // 🔍 Stores search keyword
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastPhotoRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function loadPhotos() {
       setLoading(true);
-      const newPhotos = await fetchRandomPhotos(20, page); // Load 20 photos per request
-      setPhotos((prevPhotos) => [...prevPhotos, ...newPhotos]);
+      const newPhotos = await fetchPhotos(query, 20, page);
+      setPhotos((prevPhotos) => (page === 1 ? newPhotos : [...prevPhotos, ...newPhotos]));
       setLoading(false);
     }
     loadPhotos();
-  }, [page]);
+  }, [query, page]);
 
   // Memoize the photos array to avoid re-computation on re-renders
   const memoizedPhotos = useMemo(() => photos, [photos]);
@@ -74,20 +73,31 @@ export default function PhotoGrid() {
     }
   }, [memoizedPhotos]);
 
-  if (loading && photos.length === 0) return <p>Loading images...</p>;
-
   return (
-    <GridContainer>
-      {memoizedPhotos.map((photo, index) => (
-        <Link key={`${photo.id}-${index}`} to={`/photo/${photo.id}`}>
-          <StyledImage
-            src={photo.src.medium}
-            alt={photo.photographer}
-          />
-        </Link>
-      ))}
-      {/* Observer Target */}
-      <div ref={lastPhotoRef} style={{ height: "1px" }} />
-    </GridContainer>
+    <>
+      {/* 🔍 Search Input */}
+      <SearchInput
+        type="text"
+        placeholder="Search photos..."
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setPage(1); // Reset page when searching
+        }}
+      />
+
+      {/* 🔹 Grid Container */}
+      <GridContainer>
+        {memoizedPhotos.map((photo, index) => (
+          <Link key={`${photo.id}-${index}`} to={`/photo/${photo.id}`}>
+            <StyledImage src={photo.src.medium} alt={photo.photographer} />
+          </Link>
+        ))}
+        {/* Observer Target for Infinite Scroll */}
+        <div ref={lastPhotoRef} style={{ height: "1px" }} />
+      </GridContainer>
+
+      {loading && <p>Loading images...</p>}
+    </>
   );
 }

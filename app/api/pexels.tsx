@@ -1,16 +1,20 @@
 const API_KEY = import.meta.env.VITE_PEXELS_API_KEY;
 const BASE_URL = "https://api.pexels.com/v1/";
 
-export async function fetchRandomPhotos(perPage = 20, page = 1) {
+export async function fetchPhotos(query: string = "", perPage = 20, page = 1) {
   try {
-    const response = await fetch(`${BASE_URL}curated?per_page=${perPage}&page=${page}`, {
+    const endpoint = query
+      ? `${BASE_URL}search?query=${encodeURIComponent(query)}&per_page=${perPage}&page=${page}`
+      : `${BASE_URL}curated?per_page=${perPage}&page=${page}`;
+
+    const response = await fetch(endpoint, {
       headers: { Authorization: API_KEY },
     });
 
     if (!response.ok) throw new Error("Failed to fetch photos");
 
     const data = await response.json();
-    return data.photos; // Returns an array of photos
+    return data.photos || [];
   } catch (error) {
     console.error("Error fetching photos:", error);
     return [];
