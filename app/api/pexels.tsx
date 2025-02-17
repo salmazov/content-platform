@@ -1,9 +1,9 @@
 const API_KEY = import.meta.env.VITE_PEXELS_API_KEY;
 const BASE_URL = "https://api.pexels.com/v1/";
 
-export async function fetchRandomPhotos(perPage = 10) {
+export async function fetchRandomPhotos(perPage = 20, page = 1) {
   try {
-    const response = await fetch(`${BASE_URL}curated?per_page=${perPage}`, {
+    const response = await fetch(`${BASE_URL}curated?per_page=${perPage}&page=${page}`, {
       headers: { Authorization: API_KEY },
     });
 
