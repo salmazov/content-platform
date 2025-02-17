@@ -16,3 +16,19 @@ export async function fetchRandomPhotos(perPage = 20, page = 1) {
     return [];
   }
 }
+
+export async function fetchPhotoById(photoId: string) {
+  try {
+    const response = await fetch(`https://api.pexels.com/v1/photos/${photoId}`, {
+      headers: { Authorization: import.meta.env.VITE_PEXELS_API_KEY },
+    });
+
+    if (!response.ok) throw new Error("Failed to fetch photo details");
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching photo:", error);
+    return null;
+  }
+}
+
