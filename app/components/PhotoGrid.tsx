@@ -1,52 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { fetchPhotos } from "../api/pexels";
 import { Link } from "react-router-dom";
-import {styled} from "styled-components";
-
-// Styled Components for Masonry Grid
-const MasonryGrid = styled.div`
-  column-count: auto;
-  column-gap: 12px;
-  padding: 20px;
-  
-  @media (min-width: 600px) {
-    column-count: 2;
-  }
-  @media (min-width: 900px) {
-    column-count: 3;
-  }
-  @media (min-width: 1200px) {
-    column-count: 4;
-  }
-`;
-
-const MasonryItem = styled.div`
-  display: inline-block;
-  width: 100%;
-  margin-bottom: 12px;
-`;
-
-const StyledImage = styled.img`
-  width: 100%;
-  border-radius: 8px;
-  transition: transform 0.2s ease-in-out;
-  break-inside: avoid; /* Ensures images don’t break across columns */
-
-  &:hover {
-    transform: scale(1.03);
-  }
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  max-width: 400px;
-  padding: 10px;
-  margin: 20px auto;
-  display: block;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-`;
+import {
+  MasonryGrid,
+  MasonryItem,
+  StyledImage,
+  SearchInput,
+  LoadingMessage,
+  NoResultsMessage,
+} from "./PhotoGrid.styles";
 
 interface Photo {
   id: string;
@@ -60,16 +22,21 @@ export default function PhotoGrid() {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [isClient, setIsClient] = useState(false); // ✅ Fix hydration issues
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastPhotoRef = useRef<HTMLDivElement | null>(null);
+
+  // Fix Hydration Issue: Render only on client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // 🕒 Debounce Effect (Delays updating `debouncedQuery`)
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
-      setPage(1); // Reset pagination when searching
+      setPage(1);
     }, 500);
-
     return () => clearTimeout(handler);
   }, [query]);
 
@@ -86,14 +53,15 @@ export default function PhotoGrid() {
         setLoading(false);
       }
     }
-    loadPhotos();
-  }, [debouncedQuery, page]);
+    if (isClient) loadPhotos(); // ✅ Ensure hydration match
+  }, [debouncedQuery, page, isClient]);
 
   // Memoize photos to avoid unnecessary re-renders
   const memoizedPhotos = useMemo(() => photos, [photos]);
 
   // 🔄 Intersection Observer for Infinite Scrolling
   useEffect(() => {
+    if (!isClient) return; // ✅ Ensure consistent rendering
     if (observerRef.current) observerRef.current.disconnect();
 
     observerRef.current = new IntersectionObserver((entries) => {
@@ -105,7 +73,10 @@ export default function PhotoGrid() {
     if (lastPhotoRef.current) {
       observerRef.current.observe(lastPhotoRef.current);
     }
-  }, [memoizedPhotos, loading]);
+  }, [memoizedPhotos, loading, isClient]);
+
+  // Fix Hydration: Don't render until mounted
+  if (!isClient) return null;
 
   return (
     <>
@@ -128,13 +99,12 @@ export default function PhotoGrid() {
             </MasonryItem>
           ))
         ) : (
-          !loading && <p>No images found</p>
+          !loading && <NoResultsMessage>No images found</NoResultsMessage>
         )}
-        {/* Observer Target for Infinite Scroll */}
         <div ref={lastPhotoRef} style={{ height: "1px" }} />
       </MasonryGrid>
 
-      {loading && <p>Loading images...</p>}
+      {loading && <LoadingMessage>Loading images...</LoadingMessage>}
     </>
   );
 }

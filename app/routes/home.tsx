@@ -8,8 +8,8 @@ export { ErrorBoundary };
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
+    { title: "Content Platform" },
+    { name: "description", content: "Optimized Virtualized Masonry Grid with Detailed Photo View" },
   ];
 }
 
