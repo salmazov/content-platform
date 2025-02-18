@@ -41,58 +41,77 @@ export default function PhotoGrid() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [query, setQuery] = useState(""); // 🔍 Stores search keyword
+  const [query, setQuery] = useState(""); // User input
+  const [debouncedQuery, setDebouncedQuery] = useState(query); // Debounced state
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastPhotoRef = useRef<HTMLDivElement | null>(null);
 
+  // 🕒 Debounce Effect (Delays updating `debouncedQuery`)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query);
+      setPage(1); // Reset pagination when new search starts
+    }, 500); // ⏳ 500ms debounce delay
+
+    return () => clearTimeout(handler); // Cleanup timeout on change
+  }, [query]);
+
+  // 📸 Fetch Photos when `debouncedQuery` or `page` changes
   useEffect(() => {
     async function loadPhotos() {
       setLoading(true);
-      const newPhotos = await fetchPhotos(query, 20, page);
-      setPhotos((prevPhotos) => (page === 1 ? newPhotos : [...prevPhotos, ...newPhotos]));
-      setLoading(false);
+      try {
+        const newPhotos = await fetchPhotos(debouncedQuery, 20, page);
+        setPhotos((prevPhotos) => (page === 1 ? newPhotos : [...prevPhotos, ...newPhotos]));
+      } catch (error) {
+        console.error("Error fetching photos:", error);
+      } finally {
+        setLoading(false);
+      }
     }
     loadPhotos();
-  }, [query, page]);
+  }, [debouncedQuery, page]);
 
   // Memoize the photos array to avoid re-computation on re-renders
   const memoizedPhotos = useMemo(() => photos, [photos]);
 
-  // Intersection Observer for Infinite Scrolling
+  // 🔄 Intersection Observer for Infinite Scrolling
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
 
     observerRef.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting) {
-        setPage((prevPage) => prevPage + 1); // Load next batch of images
+      if (entries[0].isIntersecting && !loading) {
+        setPage((prevPage) => prevPage + 1);
       }
     });
 
     if (lastPhotoRef.current) {
       observerRef.current.observe(lastPhotoRef.current);
     }
-  }, [memoizedPhotos]);
+  }, [memoizedPhotos, loading]);
 
   return (
     <>
-      {/* 🔍 Search Input */}
+      {/* 🔍 Search Input with Debounce */}
       <SearchInput
         type="text"
         placeholder="Search photos..."
         value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setPage(1); // Reset page when searching
-        }}
+        onChange={(e) => setQuery(e.target.value)}
       />
 
       {/* 🔹 Grid Container */}
       <GridContainer>
-        {memoizedPhotos.map((photo, index) => (
-          <Link key={`${photo.id}-${index}`} to={`/photo/${photo.id}`}>
-            <StyledImage src={photo.src.medium} alt={photo.photographer} />
-          </Link>
-        ))}
+        {memoizedPhotos.length > 0 ? (
+          memoizedPhotos.map((photo, index) => (
+            <Link key={`${photo.id}-${index}`} to={`/photo/${photo.id}`}>
+              <StyledImage src={photo.src.medium} alt={photo.photographer} />
+            </Link>
+          ))
+        ) : (
+          !loading && <p>No images found</p>
+        )}
+        
         {/* Observer Target for Infinite Scroll */}
         <div ref={lastPhotoRef} style={{ height: "1px" }} />
       </GridContainer>
